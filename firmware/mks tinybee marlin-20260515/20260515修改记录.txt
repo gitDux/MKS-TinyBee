@@ -1,0 +1,13 @@
+时间：2060515
+    1、针对开启wifi支持的宏定义（#define ESP3D_WIFISUPPORT）后，编译报错：
+    .pio\libdeps\mks_tinybee\AsyncTCP\src\AsyncTCP.cpp:27:29: fatal error: esp_idf_version.h: No such file or directory
+
+    2、修改ini文件
+    法1：
+    （1）、TCP库的下载版本，在features.ini文件内修改：
+            (ESP3D_)?WIFISUPPORT                   = me-no-dev/AsyncTCP@1.1.1, zeed/ESP Async WebServer@1.2.3
+    （2）、修改esp32.ini文件内修改：
+            lib_ignore    = NativeEthernet, AsyncTCP_RP2040W, ESPAsyncTCP-esphome
+
+    法2（优先用）：
+    在features.ini文件内修改：(ESP3D_)?WIFISUPPORT                   = zeed/AsyncTCP@1.1.1, zeed/ESP Async WebServer@1.2.3

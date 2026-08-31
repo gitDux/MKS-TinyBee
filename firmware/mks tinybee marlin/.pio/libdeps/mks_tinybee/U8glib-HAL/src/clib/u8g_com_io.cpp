@@ -45,7 +45,6 @@
   void u8g_SetPinLevel(uint8_t internal_pin_number, uint8_t level)
   uint8_t u8g_GetPinLevel(uint8_t internal_pin_number)
 
-
 */
 
 #include "u8g.h"
@@ -88,7 +87,6 @@
       #endif
     #endif
   };
-
 
   const IO_PTR u8g_avr_port_P[] PROGMEM = {
     #ifdef PORTA
@@ -318,6 +316,26 @@
 
   uint8_t u8g_GetPinLevel(uint8_t internal_pin_number) {
     return digitalRead(internal_pin_number);
+  }
+
+#elif defined(ARDUINO_ARCH_MFL)
+
+  #include <Arduino.h>
+
+  void u8g_SetPinOutput(uint8_t internal_pin_number) {
+    pinMode(static_cast<pin_size_t>(internal_pin_number), OUTPUT);
+  }
+
+  void u8g_SetPinInput(uint8_t internal_pin_number) {
+    pinMode(static_cast<pin_size_t>(internal_pin_number), INPUT);
+  }
+
+  void u8g_SetPinLevel(uint8_t internal_pin_number, uint8_t level) {
+    digitalWrite(static_cast<pin_size_t>(internal_pin_number), level);
+  }
+
+  uint8_t u8g_GetPinLevel(uint8_t internal_pin_number) {
+    return digitalRead(static_cast<pin_size_t>(internal_pin_number));
   }
 
 #elif defined(U8G_HAL_LINKS)
