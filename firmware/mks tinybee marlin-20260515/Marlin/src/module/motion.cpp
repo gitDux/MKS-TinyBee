@@ -1017,7 +1017,13 @@ FORCE_INLINE void segment_idle(millis_t &next_idle_ms) {
       // Get the linear distance in XYZ
       // If the move is very short, check the E move distance
       // No E move either? Game over.
-      float cartesian_mm = diff.magnitude();
+      #if ENABLED(AXIS4_ROTATIONAL) && LINEAR_AXES == 4
+        // C is an angle. Base segmentation and move time on XYZ distance,
+        // then interpolate C over the same segments.
+        float cartesian_mm = SQRT(sq(diff.x) + sq(diff.y) + sq(diff.z));
+      #else
+        float cartesian_mm = diff.magnitude();
+      #endif
       TERN_(HAS_EXTRUDERS, if (UNEAR_ZERO(cartesian_mm)) cartesian_mm = ABS(diff.e));
       if (UNEAR_ZERO(cartesian_mm)) return;
 

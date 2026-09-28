@@ -28,5 +28,6 @@
         "list": "cpp",
         "regex": "cpp"
     },
-    "C_Cpp.errorSquiggles": "Disabled"
+    "C_Cpp.errorSquiggles": "Disabled",
+    "cmake.sourceDirectory": "E:/MKS-TinyBee/firmware/mks tinybee marlin-20260515/buildroot/share/cmake"
 }

@@ -183,6 +183,30 @@ void GcodeSuite::get_destination_from_command() {
       destination[i] = current_position[i];
   }
 
+  #if ENABLED(AXIS4_ROTATIONAL) && LINEAR_AXES >= 4
+    /**
+     * Wrap the resolved C target (absolute or relative) into [min, max).
+     * With [-180, 180), C190 becomes -170 and C370 becomes 10.
+     * Move directly to this target, even when crossing the wrap boundary
+     * requires a long reverse move to stay within the physical limits.
+     */
+    if (seen.i && !skip_move) {
+      constexpr float revolution = AXIS4_ROTATION_DEGREES,
+                      safe_min = AXIS4_ROTATION_MIN,
+                      safe_max = AXIS4_ROTATION_MAX;
+
+      static_assert(revolution > 0 && safe_max - safe_min == revolution,
+                    "AXIS4 rotation range must span exactly one positive revolution.");
+
+      float wrapped = fmodf(destination.i - safe_min, revolution);
+      if (wrapped < 0) wrapped += revolution;
+
+      destination.i = safe_min + wrapped;
+      // Floating-point rounding near the boundary can produce safe_max.
+      if (destination.i >= safe_max) destination.i = safe_min;
+    }
+  #endif
+
   #if HAS_EXTRUDERS
     // Get new E position, whether absolute or relative
     if ( (seen.e = parser.seenval('E')) ) {

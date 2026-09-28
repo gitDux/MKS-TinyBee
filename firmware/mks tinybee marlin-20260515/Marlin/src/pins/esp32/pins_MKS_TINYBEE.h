@@ -105,8 +105,7 @@
 #define HEATER_0_PIN                         145
 #ifndef MKS_TEST
 #define HEATER_1_PIN                         146
-#define FAN_PIN                              147
-#define FAN1_PIN                             148
+#define FAN_PIN                              148  // Physical FAN2: primary part-cooling fan (M106 / M106 P0)
 #endif
 #define HEATER_BED_PIN                       144
 

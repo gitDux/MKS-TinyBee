@@ -1060,7 +1060,7 @@ void Endstops::update() {
 
   #if LINEAR_AXES >= 4
     if (stepper.axis_is_moving(I_AXIS)) {
-      if (stepper.motor_direction(I_AXIS_HEAD)) { // -direction
+      if (TERN(XC_BELT_COUPLING, stepper.xc_c_direction(), stepper.motor_direction(I_AXIS_HEAD))) { // -direction
         #if HAS_I_MIN || (I_SPI_SENSORLESS && I_HOME_TO_MIN)
           PROCESS_ENDSTOP(I, MIN);
         #endif

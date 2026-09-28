@@ -524,6 +524,10 @@ class Stepper {
     // The direction of a single motor
     FORCE_INLINE static bool motor_direction(const AxisEnum axis) { return TEST(last_direction_bits, axis); }
 
+    #if ENABLED(XC_BELT_COUPLING)
+      FORCE_INLINE static bool xc_c_direction() { return current_block && current_block->xc_c_negative; }
+    #endif
+
     // The last movement direction was not null on the specified axis. Note that motor direction is not necessarily the same.
     FORCE_INLINE static bool axis_is_moving(const AxisEnum axis) { return TEST(axis_did_move, axis); }
 

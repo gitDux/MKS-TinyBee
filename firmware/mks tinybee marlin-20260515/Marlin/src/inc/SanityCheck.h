@@ -1379,6 +1379,21 @@ static_assert(Y_MAX_LENGTH >= Y_BED_SIZE, "Movement bounds (Y_MIN_POS, Y_MAX_POS
 /**
  * Features that require a min/max/specific LINEAR_AXES
  */
+#if ENABLED(XC_BELT_COUPLING)
+  #if !IS_CARTESIAN || EITHER(IS_CORE, MARKFORGED_XY) || LINEAR_AXES != 4 || AXIS4_NAME != 'C' || DISABLED(AXIS4_ROTATIONAL)
+    #error "XC_BELT_COUPLING requires Cartesian XYZ and a rotational fourth axis named C."
+  #endif
+  #if ANY(BACKLASH_COMPENSATION, DIRECT_STEPPING, DUAL_X_CARRIAGE)
+    #error "XC_BELT_COUPLING is incompatible with BACKLASH_COMPENSATION, DIRECT_STEPPING and DUAL_X_CARRIAGE."
+  #endif
+  static_assert(XC_BELT_PULLEY_TEETH > 0 && XC_BELT_PITCH_MM > 0
+             && XC_BELT_MOTOR_REVS_PER_PULLEY_REV > 0 && C_AXIS_GEAR_RATIO > 0,
+                "XC belt dimensions and transmission ratios must be positive.");
+  static_assert(XC_BELT_COMPENSATION_SIGN == 1 || XC_BELT_COMPENSATION_SIGN == -1,
+                "XC_BELT_COMPENSATION_SIGN must be 1 or -1.");
+  static_assert(!DISABLE_X && !DISABLE_I, "XC coupling requires DISABLE_X and DISABLE_I false to hold both motors during motion.");
+#endif
+
 #if HAS_LEVELING && !HAS_Z_AXIS
   #error "Leveling in Marlin requires three or more axes, with Z as the vertical axis."
 #elif ENABLED(CNC_WORKSPACE_PLANES) && !HAS_Z_AXIS

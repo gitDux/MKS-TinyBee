@@ -2248,6 +2248,10 @@ uint32_t Stepper::block_phase_isr() {
       //if (current_block->steps.b) SBI(axis_bits, Y_HEAD);
       //if (current_block->steps.c) SBI(axis_bits, Z_HEAD);
       axis_did_move = axis_bits;
+      #if ENABLED(XC_BELT_COUPLING)
+        // C endstops follow tool rotation, not the compensating belt motor.
+        SET_BIT_TO(axis_did_move, I_AXIS, current_block->xc_c_moving);
+      #endif
 
       // No acceleration / deceleration time elapsed so far
       acceleration_time = deceleration_time = 0;
@@ -2818,6 +2822,9 @@ void Stepper::_set_position(const abce_long_t &spos) {
   #else
     // default non-h-bot planning
     count_position = spos;
+    #if ENABLED(XC_BELT_COUPLING)
+      count_position.i += planner.xc_belt_offset_steps(spos.x);
+    #endif
   #endif
 }
 
@@ -2884,6 +2891,8 @@ void Stepper::endstop_triggered(const AxisEnum axis) {
       axis == CORE_AXIS_1
         ? count_position[CORE_AXIS_1] - count_position[CORE_AXIS_2]
         : count_position[CORE_AXIS_2]
+    #elif ENABLED(XC_BELT_COUPLING)
+      axis == I_AXIS ? count_position.i - planner.xc_belt_offset_steps(count_position.x) : count_position[axis]
     #else // !IS_CORE
       count_position[axis]
     #endif

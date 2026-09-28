@@ -1715,6 +1715,15 @@ void Planner::finish_and_disable() {
  * For CORE machines apply translation from ABC to XYZ.
  */
 float Planner::get_axis_position_mm(const AxisEnum axis) {
+  #if ENABLED(XC_BELT_COUPLING)
+    if (axis == I_AXIS) {
+      const bool was_enabled = stepper.suspend();
+      const int32_t x_steps = stepper.position(X_AXIS),
+                    c_steps = stepper.position(I_AXIS);
+      if (was_enabled) stepper.wake_up();
+      return (c_steps - xc_belt_offset_steps(x_steps)) * mm_per_step[I_AXIS];
+    }
+  #endif
   float axis_steps;
   #if IS_CORE
 
@@ -1913,6 +1922,12 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
   #endif // PREVENT_COLD_EXTRUSION || PREVENT_LENGTHY_EXTRUDE
 
   // Compute direction bit-mask for this block
+  #if ENABLED(XC_BELT_COUPLING)
+    // Planner positions remain tool coordinates. Only motor pulses are coupled.
+    const int32_t motor_di = di + xc_belt_offset_steps(target.x) - xc_belt_offset_steps(position.x);
+    block->xc_c_moving = di != 0;
+    block->xc_c_negative = di < 0;
+  #endif
   axis_bits_t dm = 0;
   #if CORE_IS_XY
     if (da < 0) SBI(dm, X_HEAD);                // Save the toolhead's true direction in X
@@ -1963,6 +1978,10 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
 
   TERN_(HAS_EXTRUDERS, if (de < 0) SBI(dm, E_AXIS));
 
+  #if ENABLED(XC_BELT_COUPLING)
+    SET_BIT_TO(dm, I_AXIS, motor_di < 0);
+  #endif
+
   #if HAS_EXTRUDERS
     const float esteps_float = de * e_factor[extruder];
     const uint32_t esteps = ABS(esteps_float) + 0.5f;
@@ -1998,6 +2017,10 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
   #else
     // default non-h-bot planning
     block->steps.set(LINEAR_AXIS_LIST(ABS(da), ABS(db), ABS(dc), ABS(di), ABS(dj), ABS(dk)));
+  #endif
+
+  #if ENABLED(XC_BELT_COUPLING)
+    block->steps.i = ABS(motor_di);
   #endif
 
   /**
@@ -2108,6 +2131,18 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
           )
         #endif
       );
+
+      // A rotary fourth axis is measured in degrees, so it must not be added
+      // quadratically to the XYZ path length in millimeters. For synchronized
+      // XYZ+C moves use the XYZ distance to establish move duration. The
+      // regular per-axis feedrate limiter below still enforces C max speed.
+      // For a C-only move retain degree-based feedrate behavior.
+      #if ENABLED(AXIS4_ROTATIONAL) && LINEAR_AXES == 4 && IS_CARTESIAN
+        const float xyz_move_mm = SQRT(
+          sq(steps_dist_mm.x) + sq(steps_dist_mm.y) + sq(steps_dist_mm.z)
+        );
+        block->millimeters = xyz_move_mm > 0 ? xyz_move_mm : ABS(steps_dist_mm.i);
+      #endif
     }
 
     /**
@@ -2130,6 +2165,12 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
 
   // Bail if this is a zero-length block
   if (block->step_event_count < MIN_STEPS_PER_SEGMENT) return false;
+
+  #if ENABLED(XC_BELT_COUPLING)
+    // Path length above uses tool motion; motor speed, acceleration and junction
+    // limits below must include compensation even on a pure X move.
+    steps_dist_mm.i = motor_di * mm_per_step[I_AXIS];
+  #endif
 
   TERN_(MIXING_EXTRUDER, mixer.populate_block(block->b_color));
 
@@ -2198,6 +2239,14 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
     #if LINEAR_AXES >= 6
       if (block->steps.k) stepper.enable_axis(K_AXIS);
     #endif
+  #endif
+
+  #if ENABLED(XC_BELT_COUPLING)
+    // Both motors must hold position even when commanded C cancels belt motion.
+    if (block->steps.x || block->steps.i) {
+      stepper.enable_axis(X_AXIS);
+      stepper.enable_axis(I_AXIS);
+    }
   #endif
 
   // Enable extruder(s)
@@ -2546,7 +2595,7 @@ bool Planner::_populate_block(block_t * const block, bool split_move,
      * => normalize the complete junction vector.
      * Elsewise, when needed JD will factor-in the E component
      */
-    if (EITHER(IS_CORE, MARKFORGED_XY) || esteps > 0)
+    if (ANY(IS_CORE, MARKFORGED_XY, XC_BELT_COUPLING) || esteps > 0)
       normalize_junction_vector(unit_vec);  // Normalize with XYZE components
     else
       unit_vec *= inverse_millimeters;      // Use pre-calculated (1 / SQRT(x^2 + y^2 + z^2))

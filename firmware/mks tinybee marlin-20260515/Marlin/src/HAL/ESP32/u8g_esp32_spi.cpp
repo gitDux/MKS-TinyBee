@@ -6,7 +6,10 @@
 
 #include "../shared/HAL_SPI.h"
 #include "SPI.h"
-#include "sd_ESP32.h"
+
+#if ENABLED(ESP3D_WIFISUPPORT)
+  #include "sd_ESP32.h"
+#endif
 
 
 static SPISettings spiConfig;
@@ -41,7 +44,9 @@ static uint8_t msgInitCount = 2; // Ignore all messages until 2nd U8G_COM_MSG_IN
 uint8_t u8g_eps_hw_spi_fn(u8g_t *u8g, uint8_t msg, uint8_t arg_val, void *arg_ptr)
 {
 
-  if(sd_busy_lock == true) return 0;
+  #if ENABLED(ESP3D_WIFISUPPORT)
+    if (sd_busy_lock) return 0;
+  #endif
 
   if (msgInitCount) {
     if (msg == U8G_COM_MSG_INIT) msgInitCount --;

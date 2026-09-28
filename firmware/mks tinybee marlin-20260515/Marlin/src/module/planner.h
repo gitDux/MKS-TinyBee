@@ -178,6 +178,10 @@ typedef struct block_t {
   };
   uint32_t step_event_count;                // The number of step events required to complete this block
 
+  #if ENABLED(XC_BELT_COUPLING)
+    bool xc_c_moving, xc_c_negative;         // Tool C motion, independent of belt motor motion
+  #endif
+
   #if HAS_MULTI_EXTRUDER
     uint8_t extruder;                       // The extruder to move (if E move)
   #else
@@ -835,6 +839,14 @@ class Planner {
      * For CORE machines apply translation from ABC to XYZ.
      */
     static float get_axis_position_mm(const AxisEnum axis);
+
+    #if ENABLED(XC_BELT_COUPLING)
+      // Round absolute offsets, not individual moves, so small segments don't
+      // accumulate compensation rounding error. Also used by stepper sync/readback.
+      static int32_t xc_belt_offset_steps(const int32_t x_steps) {
+        return LROUND(x_steps * mm_per_step[X_AXIS] * XC_BELT_C_DEGREES_PER_X_MM * settings.axis_steps_per_mm[I_AXIS]);
+      }
+    #endif
 
     static inline abce_pos_t get_axis_positions_mm() {
       const abce_pos_t out = LOGICAL_AXIS_ARRAY(
